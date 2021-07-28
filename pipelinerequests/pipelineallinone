@@ -1,0 +1,65 @@
+PUT _ingest/pipeline/stackservice
+{
+  "description": "Extract from container_name to service_name/stack_name\nSplit service_name",
+  "processors": [
+    {
+      "grok": {
+        "field": "container_name",
+        "patterns": [
+          "/%{GREEDYDATA:stack_name}_%{GREEDYDATA:service_name}"
+        ],
+        "description": "Extract from container_name to service_name/stack_name"
+      }
+    },
+    {
+      "split": {
+        "field": "service_name",
+        "separator": ".\\w+\\.\\b(\\w+)$",
+        "description": "Split service_name"
+      }
+    }
+  ]
+}
+
+
+PUT _ingest/pipeline/cassandra
+{
+  "description": "Extract from log to level for cassandra",
+  "processors": [
+    {
+      "grok": {
+        "field": "log",
+        "patterns": [
+          "%{GREEDYDATA:level} \\[%{GREEDYDATA}\\]"
+        ],
+        "if": "ctx.service_name.contains ('cassandratest')",
+        "description": "Extract from log to level for cassandra"
+      }
+    }
+  ]
+}
+
+PUT _ingest/pipeline/mainpipeline
+{
+  "processors": [
+    {
+      "pipeline": {
+        "name": "stackservice",
+        "description": "Run stackservice"
+      }
+    },
+    {
+      "pipeline": {
+        "name": "cassandra",
+        "description": "Run cassandra"
+      }
+    }
+  ]
+}
+
+PUT /apps-logs/_settings
+{
+  "index" : {
+    "default_pipeline" : "mainpipeline"
+  }
+}

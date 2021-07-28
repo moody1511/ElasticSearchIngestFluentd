@@ -1,0 +1,22 @@
+PUT _ingest/pipeline/stackservice
+{
+  "description": "Extract from container_name to service_name/stack_name\nSplit service_name",
+  "processors": [
+    {
+      "grok": {
+        "field": "container_name",
+        "patterns": [
+          "/%{GREEDYDATA:stack_name}_%{GREEDYDATA:service_name}"
+        ],
+        "description": "Extract from container_name to service_name/stack_name"
+      }
+    },
+    {
+      "split": {
+        "field": "service_name",
+        "separator": ".\\w+\\.\\b(\\w+)$",
+        "description": "Split service_name"
+      }
+    }
+  ]
+}

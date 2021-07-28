@@ -1,0 +1,126 @@
+version: "3.8"
+
+networks:
+  mtrtest:
+    name: networktest
+    external: true
+
+services:
+  cassandratest:
+    image: cassandra:3.11.10
+    hostname: cassandratest
+    stop_grace_period: 60s
+    deploy:
+      endpoint_mode: dnsrr
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        window: 120s
+      resources:
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+        limits:
+          memory: 2G
+          cpus: '1'
+    environment:
+      CASSANDRA_LISTEN_ADDRESS: cassandratest
+      CASSANDRA_SEEDS: cassandratest
+      HEAP_NEWSIZE: 400M
+      MAX_HEAP_SIZE: 2048M
+      JVM_EXTRA_OPTS: -Djava.rmi.server.hostname=cassandratest
+    cap_add:
+      - IPC_LOCK
+    networks:
+      - networktest
+    ports:
+      - target: 9042
+        published: 9042
+        protocol: tcp
+        mode: host
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-address: localhost:24224
+
+  elktest:
+    hostname: elktest
+    image: elasticsearch:7.13.4
+    deploy:
+      rollback_config:
+        order: stop-first
+        parallelism: 0
+      update_config:
+        order: stop-first
+        parallelism: 1
+        failure_action: rollback
+      resources:
+        reservations:
+          memory: 2G
+          cpus: '1'
+        limits:
+          memory: 4G
+          cpus: '2'
+    networks:
+      - networktest
+    ports:
+      - target: 9200
+        published: 9200
+        protocol: tcp
+        mode: host
+      - target: 9300
+        published: 9300
+        protocol: tcp
+        mode: host
+    environment:
+      - node.name=elktest
+      - cluster.name=elktest
+      - discovery.seed_hosts=elktest
+      - cluster.initial_master_nodes=elktest
+      - "ES_JAVA_OPTS=-Xms512M -Xmx512M"
+    
+  kibanatest:
+    hostname: kibanatest
+    image: kibana:7.13.4
+    networks:
+      - networktest
+    ports:
+    - target: 5601
+      published: 5601
+      protocol: tcp
+      mode: host
+    deploy:
+      rollback_config:
+        order: stop-first
+        parallelism: 0
+      update_config:
+        order: stop-first
+        parallelism: 1
+        failure_action: rollback
+      resources:
+        reservations:
+          memory: 512M
+          cpus: '1'
+        limits:
+          memory: 4G
+          cpus: '2'
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elktest:9200
+      - SERVER_NAME=kibanatest
+
+  fluentd:
+    hostname: fluentd
+    image: moody1511/fluentdelk:1.0
+    networks:
+      - networktest
+    volumes:
+      - ./fluentd/conf:/fluentd/etc  
+    ports:
+    - target: 24224
+      published: 24224
+      protocol: tcp
+      mode: host
+    - target: 24224
+      published: 24224
+      protocol: udp
+      mode: host   

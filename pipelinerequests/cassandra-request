@@ -1,0 +1,16 @@
+PUT _ingest/pipeline/cassandra
+{
+  "description": "Extract from log to level for cassandra",
+  "processors": [
+    {
+      "grok": {
+        "field": "log",
+        "patterns": [
+          "%{GREEDYDATA:level} \\[%{GREEDYDATA}\\]"
+        ],
+        "if": "ctx.service_name.contains ('cassandratest')",
+        "description": "Extract from log to level for cassandra"
+      }
+    }
+  ]
+}

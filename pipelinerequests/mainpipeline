@@ -1,0 +1,17 @@
+PUT _ingest/pipeline/mainpipeline
+{
+  "processors": [
+    {
+      "pipeline": {
+        "name": "stackservice",
+        "description": "Run stackservice"
+      }
+    },
+    {
+      "pipeline": {
+        "name": "cassandra",
+        "description": "Run cassandra"
+      }
+    }
+  ]
+}
